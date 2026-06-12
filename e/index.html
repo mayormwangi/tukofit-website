@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TukoFit Emergency Medical ID</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{background:#070709;color:#fff;font-family:'Inter',sans-serif;min-height:100vh;padding:24px 16px 40px}
+    .top-bar{background:#EF4444;color:#fff;text-align:center;padding:12px;font-size:13px;font-weight:700;letter-spacing:0.1em;margin:-24px -16px 24px;text-transform:uppercase}
+    .card{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:20px;margin-bottom:14px}
+    .card-label{font-size:10px;font-weight:700;letter-spacing:0.18em;color:rgba(255,255,255,0.4);text-transform:uppercase;margin-bottom:8px}
+    .card-value{font-size:15px;color:#fff;line-height:1.5;font-weight:500}
+    .card-value.empty{color:rgba(255,255,255,0.25);font-style:italic;font-size:13px}
+    .alert-card{background:rgba(239,68,68,0.1);border-color:rgba(239,68,68,0.3)}
+    .name-block{display:flex;align-items:center;gap:16px;margin-bottom:24px}
+    .avatar{width:64px;height:64px;border-radius:50%;background:rgba(212,160,23,0.2);border:2px solid #D4A017;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:700;color:#D4A017;flex-shrink:0;overflow:hidden}
+    .avatar img{width:100%;height:100%;object-fit:cover}
+    .name{font-size:22px;font-weight:700;color:#fff}
+    .sub{font-size:13px;color:rgba(255,255,255,0.4);margin-top:2px}
+    .blood{display:inline-block;background:#EF4444;color:#fff;font-size:22px;font-weight:900;padding:6px 20px;border-radius:10px;letter-spacing:0.05em}
+    .call-btn{display:block;background:#22C55E;color:#fff;text-decoration:none;text-align:center;padding:16px;border-radius:14px;font-weight:700;font-size:15px;margin-top:8px}
+    .footer{text-align:center;margin-top:28px;font-size:11px;color:rgba(255,255,255,0.2);letter-spacing:0.08em}
+    .loading{text-align:center;padding:60px 20px;color:rgba(255,255,255,0.4)}
+    .not-found{text-align:center;padding:60px 20px}
+    .tag{display:inline-block;background:rgba(255,255,255,0.08);border-radius:6px;padding:3px 10px;font-size:12px;color:rgba(255,255,255,0.6);margin:2px}
+  </style>
+</head>
+<body>
+  <div class="top-bar">⚠️ Emergency Medical ID — TukoFit Collective</div>
+  <div id="root"><div class="loading">Loading emergency information...</div></div>
+  <div class="footer">TukoFit Collective · Wellness Passport · tukofit.com</div>
+
+  <script>
+    const code = window.location.pathname.split('/').filter(Boolean).pop();
+    if (!code || code === 'e') {
+      document.getElementById('root').innerHTML = '<div class="not-found"><div style="font-size:48px;margin-bottom:16px">🛂</div><div style="color:#fff;font-size:18px;font-weight:700">Invalid Emergency Link</div><div style="color:rgba(255,255,255,0.4);font-size:14px;margin-top:8px">This link may be expired or incorrect.</div></div>';
+    } else {
+      fetch('https://tukofit-collective.onrender.com/api/emergency/' + code)
+        .then(r => r.json())
+        .then(d => {
+          if (d.error) throw new Error(d.error);
+          const val = v => v ? `<span class="card-value">${v}</span>` : `<span class="card-value empty">Not provided</span>`;
+          const tags = v => v ? v.split(',').map(t => `<span class="tag">${t.trim()}</span>`).join('') : `<span class="card-value empty">None listed</span>`;
+
+          document.getElementById('root').innerHTML = `
+            <div class="name-block">
+              <div class="avatar">${d.photoUrl ? `<img src="${d.photoUrl}" alt=""/>` : (d.name||'?')[0].toUpperCase()}</div>
+              <div>
+                <div class="name">${d.name || 'Unknown'}</div>
+                <div class="sub">${[d.nationality, d.country].filter(Boolean).join(' · ') || 'TukoFit Member'}</div>
+              </div>
+            </div>
+
+            <div class="card alert-card">
+              <div class="card-label">🩸 Blood Type</div>
+              ${d.bloodType ? `<span class="blood">${d.bloodType}</span>` : `<span class="card-value empty">Not provided</span>`}
+            </div>
+
+            <div class="card alert-card">
+              <div class="card-label">⚠️ Allergies</div>
+              <div>${tags(d.allergies)}</div>
+            </div>
+
+            <div class="card">
+              <div class="card-label">💊 Current Medications</div>
+              ${val(d.medications)}
+            </div>
+
+            <div class="card">
+              <div class="card-label">❤️ Medical Conditions</div>
+              ${val(d.conditions)}
+            </div>
+
+            ${d.emergencyContactName ? `
+            <div class="card">
+              <div class="card-label">📞 Emergency Contact</div>
+              <div class="card-value">${d.emergencyContactName}${d.emergencyContactRelation ? ` (${d.emergencyContactRelation})` : ''}</div>
+              ${d.emergencyContactPhone ? `<a href="tel:${d.emergencyContactPhone}" class="call-btn">📞 Call ${d.emergencyContactName}</a>` : ''}
+            </div>` : ''}
+
+            ${d.doctorName || d.doctorPhone ? `
+            <div class="card">
+              <div class="card-label">🏥 Doctor / Hospital</div>
+              <div class="card-value">${d.doctorName || ''}</div>
+              ${d.doctorPhone ? `<a href="tel:${d.doctorPhone}" class="call-btn" style="background:#3B82F6;">📞 Call Doctor</a>` : ''}
+            </div>` : ''}
+
+            ${d.insuranceProvider ? `
+            <div class="card">
+              <div class="card-label">🪪 Insurance</div>
+              ${val(d.insuranceProvider)}
+            </div>` : ''}
+
+            ${d.notes ? `
+            <div class="card">
+              <div class="card-label">📝 Important Notes</div>
+              ${val(d.notes)}
+            </div>` : ''}
+          `;
+        })
+        .catch(() => {
+          document.getElementById('root').innerHTML = '<div class="not-found"><div style="font-size:48px;margin-bottom:16px">⚠️</div><div style="color:#fff;font-size:18px;font-weight:700">Medical ID Not Found</div><div style="color:rgba(255,255,255,0.4);font-size:14px;margin-top:8px">This emergency link may be invalid.</div></div>';
+        });
+    }
+  </script>
+</body>
+</html>
